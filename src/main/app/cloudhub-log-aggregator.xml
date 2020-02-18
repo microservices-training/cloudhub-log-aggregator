@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:objectstore="http://www.mulesoft.org/schema/mule/objectstore"
+	xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/objectstore http://www.mulesoft.org/schema/mule/objectstore/current/mule-objectstore.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+
+	<flow name="cloudhub-log-aggregator-poll-flow" processingStrategy="synchronous">
+		<poll doc:name="Poll">
+			<fixed-frequency-scheduler frequency="${polling.frequency}" />
+			<logger message="Starting CH Log Aggregator" level="INFO" doc:name="Logger" />
+		</poll>
+		<set-variable variableName="environmentId" value="#['${environment.id}']" doc:name="Set Environment ID" />
+		<flow-ref name="cloudhub-log-aggregator-main-flow" doc:name="cloudhub-log-aggregator-poll-flow" />
+	</flow>
+
+	<flow name="cloudhub-log-aggregator-main-flow">
+		<enricher target="#[flowVars.loginResponse]" doc:name="Message Enricher - Store Login Response">
+			<ee:cache cachingStrategy-ref="expirable-caching-strategy" doc:name="Cache">
+				<flow-ref name="anypoint-platform-apis-post-accounts-login-flow" doc:name="anypoint-platform-apis-post-accounts-login-flow" />
+			</ee:cache>
+		</enricher>
+		<ee:cache doc:name="Cache">
+			<flow-ref name="anypoint-platform-apis-get-cloudhub-apps-flow" doc:name="anypoint-platform-apis-get-cloudhub-apps-flow" />
+		</ee:cache>
+
+		<foreach doc:name="For Each Application">
+			<set-variable variableName="appDomain" value="#[message.payload['domain']]" doc:name="Set App Domain as Variable" />
+			<choice doc:name="Check the domain name to avoid gathering logs from this application">
+				<when expression="#[flowVars['appDomain'] != 'cloudhub-log-aggregator']">
+					<objectstore:retrieve config-ref="record-id-object-store" key="#[flowVars['appDomain']]" defaultValue-ref="#['']"
+						targetProperty="lowerId" doc:name="Retrieve App Domain Lower ID" />
+					<flow-ref name="anypoint-platform-apis-get-cloudhub-logs-flow" doc:name="anypoint-platform-apis-get-cloudhub-logs-flow" />
+					<enricher target="#[flowVars['upd']]" doc:name="Message Enricher">
+						<choice doc:name="Check if the payload size != 0">
+							<when expression="#[message.payload.size() != 0]">
+								<enricher target="#[flowVars['store']]" doc:name="Message Enricher">
+									<processor-chain doc:name="Processor Chain">
+										<set-variable variableName="lastRecord" value="#[message.payload.get(message.payload.size() - 1)]" doc:name="Set Last Record as Variable" />
+										<objectstore:store config-ref="record-id-object-store" key="#[flowVars['appDomain']]" value-ref="#[flowVars['lastRecord']['recordId']]"
+											overwrite="true" doc:name="Store Last Record" />
+									</processor-chain>
+								</enricher>
+								<batch:execute name="cloudhub-log-aggregator-push-logs-flow" doc:name="PushLogsToExternalLogRepo" />
+							</when>
+							<otherwise>
+								<logger message="No new records" level="INFO" doc:name="Logger" />
+							</otherwise>
+						</choice>
+					</enricher>
+				</when>
+				<otherwise>
+					<logger message="Not aggregating my own logs" level="DEBUG" doc:name="Logger" />
+				</otherwise>
+			</choice>
+		</foreach>
+	</flow>
+
+	<batch:job name="cloudhub-log-aggregator-push-logs-flow" max-failed-records="-1">
+		<batch:threading-profile poolExhaustedAction="WAIT" />
+		<batch:process-records>
+			<batch:step name="format-entry">
+				<logger level="INFO" doc:name="Logger" message="#[payload]" />
+			</batch:step>
+			<batch:step name="push-to-external-log-repo">
+				<logger level="DEBUG" doc:name="Logger" />
+			</batch:step>
+		</batch:process-records>
+	</batch:job>
+</mule>

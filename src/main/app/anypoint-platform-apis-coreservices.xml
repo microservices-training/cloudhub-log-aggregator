@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<flow name="anypoint-platform-apis-post-accounts-login-flow" processingStrategy="synchronous">
+		<logger message="Log in to Anypoint Platform" level="INFO" doc:name="Logger" />
+
+		<dw:transform-message doc:name="Build Login Request">
+			<dw:input-payload mimeType="application/java" />
+			<dw:set-payload resource="classpath:dataweave/anypoint/platform/build-login-request.dwl" />
+		</dw:transform-message>
+
+		<http:request config-ref="http-request-config" path="${anypoint.platform.login.path}" method="POST" doc:name="POST Login">
+			<http:request-builder>
+				<http:header headerName="Content-Type" value="application/json" />
+			</http:request-builder>
+		</http:request>
+
+		<logger message="Log in to Anypoint Platform - Status: #[message.inboundProperties.'http.status']" level="INFO" doc:name="Log Status" />
+
+		<dw:transform-message doc:name="Transform Login Response">
+			<dw:set-payload resource="classpath:dataweave/anypoint/platform/transform-login-response.dwl" />
+		</dw:transform-message>
+	</flow>
+
+
+</mule>
