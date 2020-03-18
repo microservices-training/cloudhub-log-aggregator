@@ -1,0 +1,18 @@
+anypoint:
+  platform:
+    apis:
+      host: anypoint.mulesoft.com
+      port: "443"
+    login:
+      path: "/accounts/login"
+polling:
+  frequency: "10000" 
+cache:
+  ttl: "3000000"
+cloudhub:
+  apps:
+    path: "/cloudhub/api/v2/applications"
+  logs:
+    path: "/cloudhub/api/v2/applications/{domain}/logs"
+    limit: "10"
+    timeout: "60000"

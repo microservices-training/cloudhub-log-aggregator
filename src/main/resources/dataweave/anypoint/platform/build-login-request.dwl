@@ -1,7 +1,7 @@
-%dw 1.0
-%output application/json
+%dw 2.0
+output application/json
 ---
 {
-	"username":p('anypoint.platform.user'),
-	"password":p('anypoint.platform.password')
+	"username": p('secure::anypoint.platform.user'),
+	"password": p('secure::anypoint.platform.password')
 }

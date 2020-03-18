@@ -1,9 +1,9 @@
-%dw 1.0
-%output application/json
+%dw 2.0
+output application/json
 ---
 {
 	upperId: "",
-	lowerId: flowVars.lowerId,
+	lowerId: vars.lowerId,
 	descending: false,
-	limit: 10000
+	limit: p('cloudhub.logs.limit')
 }

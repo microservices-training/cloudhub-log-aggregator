@@ -1,4 +1,4 @@
-%dw 1.0
-%output application/java
+%dw 2.0
+output application/java
 ---
 payload

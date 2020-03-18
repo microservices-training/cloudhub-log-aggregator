@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<sub-flow name="anypoint-platform-apis-post-accounts-login-flow" doc:id="12d13286-5b69-48c8-ab15-57853efcad43" >
+		<logger message="Log in to Anypoint Platform" level="INFO" doc:name="Logger" />
+		<ee:transform doc:name="Build Login Request" doc:id="44022a69-e0b4-41f5-9a05-e193c6c06b32">
+			<ee:message>
+				<ee:set-payload resource="dataweave/anypoint/platform/build-login-request.dwl" />
+			</ee:message>
+		</ee:transform>
+		<http:request path="${anypoint.platform.login.path}" method="POST" doc:name="POST Login" config-ref="HTTP_Request_configuration">
+				<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+			</http:request>
+		<logger message="Log in to Anypoint Platform - Status: #[attributes.'statusCode']" level="INFO" doc:name="Log Status" />
+		<ee:transform doc:name="Transform Login Response" doc:id="aa3cc934-c4ff-462e-83fc-41d5c2f3b88b">
+			<ee:message>
+				<ee:set-payload resource="dataweave/anypoint/platform/transform-login-response.dwl" />
+			</ee:message>
+			<ee:variables >
+			</ee:variables>
+		</ee:transform>
+		<os:store doc:name="Store" doc:id="40454ff5-f476-4715-9f7a-f6577917ea7b" key="loginResponse" objectStore="Object_store1"/>
+	</sub-flow>	
+	
+	
+</mule>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+	<sub-flow name="anypoint-platform-apis-get-cloudhub-apps-flow" doc:id="ebb11046-931e-4e14-a79e-267656f96a30" >
+		<logger message="Get CloudHub Apps" level="INFO" doc:name="" />
+		<http:request path="${cloudhub.apps.path}" method="GET" doc:name="GET-apps" config-ref="HTTP_Request_configuration">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : vars.environmentId,
+	"Authorization" : 'bearer ' ++ vars.loginResponse.accessToken
+}]]]></http:headers>
+		</http:request>
+		<logger message="Get CloudHub Apps - Status: #[attributes.'statusCode']" level="INFO" doc:name="log-status" />
+		<ee:transform doc:name="payload-to-Java" doc:id="3ae03cd8-db3b-441e-af3d-ea0f78ba06d5">
+			<ee:message>
+				<ee:set-payload resource="dataweave/transform-payload-to-java.dwl" />
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+
+	<sub-flow name="anypoint-platform-apis-get-cloudhub-logs-flow" doc:id="f2df66c5-022c-4c81-bf56-42c82ff00633" >
+		<logger message="Get CloudHub Logs for app #[vars.appDomain]" level="INFO" doc:name="" />
+		<ee:transform doc:name="build-GET/POST- logs-request" doc:id="fec87c66-0541-4d49-bbdb-95c48e46d83a">
+			<ee:message>
+				<ee:set-payload resource="dataweave/anypoint/platform/build-get-logs-request.dwl" />
+			</ee:message>
+		</ee:transform>
+		<http:request path="${cloudhub.logs.path}" method="POST" doc:name="GET-logs" responseTimeout="${cloudhub.logs.timeout}" config-ref="HTTP_Request_configuration">
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"X-ANYPNT-ENV-ID" : vars.environmentId,
+	"Authorization" : 'bearer ' ++ vars.loginResponse.accessToken
+}]]]></http:headers>
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"domain" : vars.appDomain
+}]]]></http:uri-params>
+		</http:request>
+		<logger message="Get CloudHub Logs - Status: #[attributes.'statusCode']" level="INFO" doc:name="log-status" />
+		<ee:transform doc:name="payload-to-java" doc:id="ef6f608d-77b0-4d21-95dd-be2a04d8ac19">
+			<ee:message>
+				<ee:set-payload resource="dataweave/transform-payload-to-java.dwl" />
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+
+
+</mule>
